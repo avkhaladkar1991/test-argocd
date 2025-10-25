@@ -1,19 +1,20 @@
-FROM node:20-alpine
+# Use official Node.js Alpine image
+FROM node:20-alpine AS build
 
+# Set working directory
 WORKDIR /app
 
-# Copy package files first to leverage Docker cache
-COPY package*.json ./
+# Copy package.json and package-lock.json from project root
+COPY ../package*.json ./
 
 # Install dependencies
 RUN npm install
 
-# Copy the rest of the app
-COPY . .
+# Copy the rest of the application code
+COPY ../ ./
 
-# Optional build step if needed
-RUN npm run build || echo "No build step"
-
-# Expose port and set start command
+# Expose app port (adjust if different)
 EXPOSE 3000
+
+# Start the application
 CMD ["npm", "start"]
