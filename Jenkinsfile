@@ -19,7 +19,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    docker.build("${IMAGE_NAME}:latest", "-f docker/Dockerfile .")
+                    sh "/usr/local/bin/docker build -t ${IMAGE_NAME}:latest -f docker/Dockerfile ."
                 }
             }
         }
