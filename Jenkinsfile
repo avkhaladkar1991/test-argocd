@@ -12,7 +12,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 // Public repo; no Git credentials needed
-                git 'https://github.com/avkhaladkar1991/test-argocd.git'
+                git branch: 'main', url: 'https://github.com/avkhaladkar1991/test-argocd.git'
             }
         }
 
