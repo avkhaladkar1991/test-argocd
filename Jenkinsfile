@@ -2,6 +2,7 @@ pipeline {
     agent any
 
     environment {
+        PATH = "/usr/local/bin:/opt/homebrew/bin:$PATH"  // Ensure Jenkins sees docker
         DOCKER_REGISTRY = 'avkhaladkar1991'
         IMAGE_NAME = "${DOCKER_REGISTRY}/my-app"
         DOCKER_CRED = credentials('dockerhub-creds')       // Docker Hub credentials
@@ -13,6 +14,13 @@ pipeline {
             steps {
                 // Public repo; no Git credentials needed
                 git branch: 'main', url: 'https://github.com/avkhaladkar1991/test-argocd.git'
+            }
+        }
+
+        stage('Check Docker') {
+            steps {
+                sh 'which docker'
+                sh 'docker version'
             }
         }
 
@@ -44,16 +52,12 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             steps {
-                // Use Jenkins stored kubeconfig to deploy via Helm
                 withKubeConfig([credentialsId: 'kubeconfig-cred-id']) {
                     sh """
-                        # Optional: check cluster nodes
                         kubectl get nodes
-
-                        # Deploy using Helm
                         helm upgrade --install my-app helm/my-app \
-                        --set image.repository=${IMAGE_NAME} \
-                        --set image.tag=latest
+                            --set image.repository=${IMAGE_NAME} \
+                            --set image.tag=latest
                     """
                 }
             }
