@@ -16,11 +16,19 @@ pipeline {
             }
         }
 
+        stage('Docker Login') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', 
+                                                 usernameVariable: 'DOCKER_USER', 
+                                                 passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'docker login -u $DOCKER_USER -p $DOCKER_PASS'
+                }
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
-                script {
-                    sh "/usr/local/bin/docker build -t ${IMAGE_NAME}:latest -f docker/Dockerfile ."
-                }
+                sh "docker build -t ${IMAGE_NAME}:latest -f docker/Dockerfile ."
             }
         }
 
