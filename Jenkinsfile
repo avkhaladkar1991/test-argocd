@@ -2,15 +2,17 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_REGISTRY = '<YOUR_DOCKER_REGISTRY>'
+        DOCKER_REGISTRY = 'avkhaladkar1991'
         IMAGE_NAME = "${DOCKER_REGISTRY}/my-app"
-        KUBE_CONFIG = credentials('kubeconfig-cred-id')
+        DOCKER_CRED = credentials('dockerhub-creds')   // Docker Hub creds
+        GIT_CRED = credentials('github-creds')           // Git creds
+        KUBE_CONFIG = credentials('kubeconfig-cred-id') // Kubeconfig file
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git 'https://github.com/<YOUR_USERNAME>/my-app.git'
+                git 'https://github.com/avkhaladkar1991/test-argocd.git'
             }
         }
 
