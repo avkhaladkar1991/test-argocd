@@ -2,62 +2,74 @@ pipeline {
     agent any
 
     environment {
-        // Set full path to docker binary
-        DOCKER_BIN = "/usr/local/bin/docker"
-        DOCKER_IMAGE = "avkhaladkar1991/my-app:latest"
-        DOCKER_REGISTRY = "docker.io"
-        DOCKER_USER = credentials('docker-username')  // Jenkins credentials ID for username
-        DOCKER_PASS = credentials('docker-password')  // Jenkins credentials ID for password
+        PATH = "/usr/local/bin:/opt/homebrew/bin:$PATH"  // Ensure Jenkins sees docker
+        DOCKER_REGISTRY = 'avkhaladkar1991'
+        IMAGE_NAME = "${DOCKER_REGISTRY}/my-app"
+        DOCKER_CRED = credentials('dockerhub-creds')       // Docker Hub credentials
+        KUBE_CONFIG = credentials('kubeconfig-cred-id')    // Kubeconfig secret file
     }
 
     stages {
-        stage('Checkout SCM') {
+        stage('Checkout') {
             steps {
-                git url: 'https://github.com/avkhaladkar1991/test-argocd.git', branch: 'main', credentialsId: 'github-creds'
+                // Public repo; no Git credentials needed
+                git branch: 'main', url: 'https://github.com/avkhaladkar1991/test-argocd.git'
             }
         }
 
         stage('Check Docker') {
             steps {
-                sh "${DOCKER_BIN} --version"
+                sh 'which docker'
+                sh 'docker version'
             }
         }
 
         stage('Docker Login') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
-                    sh "${DOCKER_BIN} login -u $USER -p $PASS ${DOCKER_REGISTRY}"
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', 
+                                                 usernameVariable: 'DOCKER_USER', 
+                                                 passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'docker login -u $DOCKER_USER -p $DOCKER_PASS'
                 }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                // Build image using Dockerfile in 'app/' folder
-                sh "${DOCKER_BIN} build -t ${DOCKER_IMAGE} -f app/Dockerfile ./app"
+                sh "docker build -t ${IMAGE_NAME}:latest -f app/Dockerfile ."
             }
         }
 
         stage('Push Docker Image') {
             steps {
-                sh "${DOCKER_BIN} push ${DOCKER_IMAGE}"
+                script {
+                    docker.withRegistry('', 'dockerhub-creds') {
+                        docker.image("${IMAGE_NAME}:latest").push()
+                    }
+                }
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                echo "Deploy to Kubernetes skipped for now"
-                // You can add kubectl apply commands here
+                withKubeConfig([credentialsId: 'kubeconfig-cred-id']) {
+                    sh """
+                        kubectl get nodes
+                        helm upgrade --install my-app helm/my-app \
+                            --set image.repository=${IMAGE_NAME} \
+                            --set image.tag=latest
+                    """
+                }
             }
         }
     }
 
     post {
         success {
-            echo "Pipeline completed successfully!"
+            echo 'Deployment successful!'
         }
         failure {
-            echo "Deployment failed!"
+            echo 'Deployment failed!'
         }
     }
 }
